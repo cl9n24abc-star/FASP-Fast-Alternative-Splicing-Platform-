@@ -10,6 +10,20 @@ A comprehensive bioinformatics platform for analyzing alternative splicing event
 - **User-Friendly Interface**: Modern web-based interface built with Vue.js and Element Plus
 - **Comprehensive Results**: Detailed splicing event analysis with statistical significance testing
 
+## 📸 Interface Preview
+
+### Main Dashboard
+![FASP Home Dashboard](path/to/image1.png)
+*Welcome page showcasing the three core features: Fast & Efficient processing, User-Friendly Interface, and Comprehensive Analysis*
+
+### Filter Settings
+![Filter Settings Panel](path/to/image2.png)
+*Advanced filtering options with Basic Filters (Event Type, Chromosome, Gene Name) and Statistical Filters (Confidence, Reads, Significance)*
+
+### Analysis Results
+![Analysis Results Table](path/to/image3.png)
+*Comprehensive results display showing 136,493 total events with 24,759 significant events, including gene information, event types, and statistical metrics*
+
 ## 📊 Platform Capabilities
 
 - **15,420+** splicing events processed
