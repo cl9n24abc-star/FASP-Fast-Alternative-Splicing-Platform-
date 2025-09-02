@@ -13,15 +13,15 @@ A comprehensive bioinformatics platform for analyzing alternative splicing event
 ## 📸 Interface Preview
 
 ### Main Dashboard
-![FASP Home Dashboard](docs/images/analyze.png)
+![FASP Home Dashboard](docs/images/home-dashboard.png)
 *Welcome page showcasing the three core features: Fast & Efficient processing, User-Friendly Interface, and Comprehensive Analysis*
 
 ### Filter Settings
-![Filter Settings Panel](docs/images/filter.webp)
+![Filter Settings Panel](docs/images/filter-settings.png)
 *Advanced filtering options with Basic Filters (Event Type, Chromosome, Gene Name) and Statistical Filters (Confidence, Reads, Significance)*
 
 ### Analysis Results
-![Analysis Results Table](docs/images/detail1.png)
+![Analysis Results Table](docs/images/analysis-results.png)
 *Comprehensive results display showing 136,493 total events with 24,759 significant events, including gene information, event types, and statistical metrics*
 
 ## 📊 Platform Capabilities
