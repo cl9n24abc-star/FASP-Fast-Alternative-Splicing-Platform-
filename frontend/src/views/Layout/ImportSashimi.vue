@@ -608,6 +608,22 @@ watch(() => params.value.gffFile, (newGffFile) => {
     })
   }
 })
+// 监听BAM文件变化，更新到Store
+watch(() => params.value.b1, (newB1) => {
+  if (newB1) {
+    store.updateFilePaths({
+      sashimiBam1: newB1
+    })
+  }
+})
+
+watch(() => params.value.b2, (newB2) => {
+  if (newB2) {
+    store.updateFilePaths({
+      sashimiBam2: newB2
+    })
+  }
+})
 </script>
 
 <style scoped>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-BAM File Analyzer - Fast Single Chromosome Analysis
-快速BAM文件分析器 - 分析单个染色体以提高速度
+BAM File Analyzer - Improved Version
+改进版BAM文件分析器 - 修复饼图逻辑并分析所有染色体小区域
 """
 
 import pysam
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class BAMAnalyzer:
-    def __init__(self, sample1_bams, sample2_bams, output_file, chromosome="chr1"):
+    def __init__(self, sample1_bams, sample2_bams, output_file, region_size=3000000, gtf_file=None):
         """
         初始化BAM分析器
         
@@ -29,19 +29,73 @@ class BAMAnalyzer:
             sample1_bams: Sample 1的BAM文件路径列表
             sample2_bams: Sample 2的BAM文件路径列表
             output_file: 输出JSON文件路径
-            chromosome: 分析的染色体 (默认chr1)
+            region_size: 每个染色体分析的区域大小 (默认100kb)
         """
         self.sample1_bams = sample1_bams
         self.sample2_bams = sample2_bams
         self.output_file = output_file
-        self.chromosome = chromosome
-        
+        self.region_size = region_size
+        self.gtf_file = gtf_file
         # 验证文件存在性
         self._validate_files()
         
-        logger.info(f"Initialized BAM analyzer for chromosome {chromosome}")
+        logger.info(f"Initialized BAM analyzer")
         logger.info(f"Sample 1: {len(sample1_bams)} BAM files")
         logger.info(f"Sample 2: {len(sample2_bams)} BAM files")
+        logger.info(f"Region size per chromosome: {region_size} bp")
+    def parse_gtf_genes(self):
+        if not self.gtf_file or not os.path.exists(self.gtf_file):
+            return []
+        
+        genes = []
+        try:
+            with open(self.gtf_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#'):
+                        continue
+                    
+                    parts = line.strip().split('\t')
+                    if len(parts) >= 9 and parts[2] == 'gene':
+                        chrom = parts[0]
+                        start = int(parts[3])
+                        end = int(parts[4])
+                        
+                        # 提取基因名
+                        attributes = parts[8]
+                        gene_name = 'Unknown'
+                        for attr in attributes.split(';'):
+                            if 'gene_name' in attr:
+                                gene_name = attr.split('"')[1]
+                                break
+                        
+                        genes.append({
+                            'chrom': chrom,
+                            'start': start,
+                            'end': end,
+                            'name': gene_name,
+                            'length': end - start
+                        })
+        except Exception as e:
+            logger.warning(f"Failed to parse GTF: {e}")
+            return []
+        
+        return genes[:500]  # 限制分析基因数量
+
+    def count_reads_in_region(self, bam_files, chrom, start, end):
+        """统计指定区域的读段数"""
+        total_reads = 0
+        
+        for bam_file in bam_files:
+            try:
+                with pysam.AlignmentFile(bam_file, "rb") as bam:
+                    # 使用samtools count快速统计
+                    reads = bam.count(chrom, start, end)
+                    total_reads += reads
+            except Exception as e:
+                logger.warning(f"Failed to count reads in {bam_file}: {e}")
+                continue
+        
+        return total_reads
     
     def _validate_files(self):
         """验证BAM文件是否存在且有索引"""
@@ -62,7 +116,7 @@ class BAMAnalyzer:
         return f"{total_size / (1024**3):.1f} GB"
     
     def analyze_basic_stats(self, bam_files, group_name):
-        """分析基础统计信息"""
+        """分析基础统计信息 - 修复MAPQ采样"""
         logger.info(f"Analyzing basic stats for {group_name}...")
         
         total_reads = 0
@@ -73,37 +127,62 @@ class BAMAnalyzer:
         
         for bam_file in bam_files:
             try:
+                # 使用samtools flagstat获取全局统计（保持不变）
+                result = subprocess.run(['samtools', 'flagstat', bam_file], 
+                                      capture_output=True, text=True, timeout=120)
+                if result.returncode == 0:
+                    lines = result.stdout.strip().split('\n')
+                    for line in lines:
+                        if 'in total' in line:
+                            total_reads += int(line.split()[0])
+                        elif 'mapped (' in line and 'primary' not in line:
+                            mapped_reads += int(line.split()[0])
+                        elif 'duplicates' in line:
+                            duplicate_reads += int(line.split()[0])
+                
+                # 修复采样方法 - 只分析主要比对
                 with pysam.AlignmentFile(bam_file, "rb") as bam:
-                    # 只分析指定染色体
-                    for read in bam.fetch(self.chromosome):
-                        total_reads += 1
+                    sample_count = 0
+                    mapq_debug = {}
+                    
+                    for read in bam.fetch():
+                        if sample_count >= 100000:  # 减少到10万样本
+                            break
                         
-                        if not read.is_unmapped:
-                            mapped_reads += 1
-                            mapq_scores.append(read.mapping_quality)
+                        # 只处理主要比对的reads
+                        if (not read.is_unmapped and 
+                            not read.is_secondary and 
+                            not read.is_supplementary):  # 添加这个检查
                             
-                            # 获取插入片段大小 (只对proper pair)
+                            mapq = read.mapping_quality
+                            mapq_debug[mapq] = mapq_debug.get(mapq, 0) + 1
+                            mapq_scores.append(mapq)
+                            
+                            # 获取插入片段大小
                             if read.is_proper_pair and read.template_length > 0:
                                 insert_sizes.append(abs(read.template_length))
                         
-                        if read.is_duplicate:
-                            duplicate_reads += 1
-                        
-                        # 限制读取数量以提高速度
-                        if total_reads > 100000:  # 只分析前10万reads
-                            break
+                        sample_count += 1
                     
-                    if total_reads > 100000:
-                        break
-                        
+                    # 输出调试信息（只显示主要比对的MAPQ）
+                    primary_count = sum(mapq_debug.values())
+                    logger.info(f"  Primary alignments in sample: {primary_count}/{sample_count}")
+                    logger.info(f"  MAPQ distribution (primary only):")
+                    for mapq in sorted(mapq_debug.keys()):
+                        count = mapq_debug[mapq]
+                        percent = count/primary_count*100 if primary_count > 0 else 0
+                        logger.info(f"    MAPQ {mapq}: {count} reads ({percent:.1f}%)")
+                            
             except Exception as e:
                 logger.error(f"Error processing {bam_file}: {e}")
                 continue
         
-        # 计算统计信息
+        # 计算统计信息（保持不变）
         mapping_rate = (mapped_reads / total_reads * 100) if total_reads > 0 else 0
         avg_mapq = np.mean(mapq_scores) if mapq_scores else 0
         avg_insert_size = int(np.mean(insert_sizes)) if insert_sizes else 0
+        
+        logger.info(f"  {group_name} MAPQ samples: {len(mapq_scores)}, avg MAPQ: {avg_mapq:.1f}")
         
         return {
             'total_reads': total_reads,
@@ -115,6 +194,37 @@ class BAMAnalyzer:
             'mapq_scores': mapq_scores,
             'insert_sizes': insert_sizes
         }
+    def generate_pie_chart_data(self, group1_stats, group2_stats):
+        """生成修正的映射统计饼图数据"""
+        # 合并两组统计数据
+        total_reads = group1_stats['total_reads'] + group2_stats['total_reads']
+        mapped_reads = group1_stats['mapped_reads'] + group2_stats['mapped_reads']
+        duplicate_reads = group1_stats['duplicate_reads'] + group2_stats['duplicate_reads']
+        
+        # 计算百分比
+        mapped_percent = (mapped_reads / total_reads * 100) if total_reads > 0 else 0
+        unmapped_percent = ((total_reads - mapped_reads) / total_reads * 100) if total_reads > 0 else 0
+        duplicate_percent = (duplicate_reads / total_reads * 100) if total_reads > 0 else 0
+        
+        logger.info(f"Pie chart stats: Total={total_reads}, Mapped={mapped_percent:.1f}%, Unmapped={unmapped_percent:.1f}%, Duplicates={duplicate_percent:.1f}%")
+        
+        return [
+            {
+                "value": round(mapped_percent, 1),
+                "name": "Successfully Mapped",
+                "itemStyle": {"color": "#5470c6"}
+            },
+            {
+                "value": round(unmapped_percent, 1), 
+                "name": "Unmapped",
+                "itemStyle": {"color": "#ee6666"}
+            },
+            {
+                "value": round(duplicate_percent, 1),
+                "name": "Duplicates", 
+                "itemStyle": {"color": "#fac858"}
+            }
+        ]
     
     def generate_mapq_histogram(self, mapq_scores):
         """生成MAPQ直方图数据"""
@@ -150,139 +260,182 @@ class BAMAnalyzer:
             'group2': calculate_density(group2_sizes, x_values)
         }
     
-    def analyze_chromosome_coverage(self, bam_files, group_index):
-        """分析染色体覆盖度"""
-        logger.info(f"Analyzing chromosome coverage for group {group_index + 1}...")
+    def analyze_all_chromosomes_coverage(self, bam_files, group_index):
+        """分析所有染色体的小区域覆盖度"""
+        logger.info(f"Analyzing all chromosomes coverage for group {group_index + 1}...")
         
-        # 只分析一个染色体，简化处理
+        chromosomes = [str(i) for i in range(1, 23)] + ['X', 'Y']
         coverage_data = []
         
-        try:
-            # 使用samtools depth计算覆盖度（更快）
-            cmd = ['samtools', 'depth', '-r', self.chromosome] + bam_files
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        for chr_idx, chrom in enumerate(chromosomes):
+            chr_name = chrom
+            # 分析每个染色体的一个小区域
+            start_pos = 10000000  # 从10M开始避开端粒
+            end_pos = start_pos + self.region_size
+            region = f"{chr_name}:{start_pos}-{end_pos}"
             
-            if result.returncode == 0:
-                depths = []
-                for line in result.stdout.strip().split('\n'):
-                    if line:
-                        parts = line.split('\t')
-                        if len(parts) >= 3:
-                            depths.append(int(parts[2]))
+            try:
+                # 使用samtools coverage分析指定区域
+                cmd = ['samtools', 'coverage', '-r', region] + bam_files
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 
-                # 计算覆盖度统计
-                if depths:
-                    avg_coverage = np.mean(depths)
-                    coverage_percentage = min(100, avg_coverage * 2)  # 简化计算
+                if result.returncode == 0:
+                    lines = result.stdout.strip().split('\n')
+                    if len(lines) >= 2:
+                        data = lines[1].split('\t')
+                        if len(data) >= 6:
+                            # samtools coverage输出格式第6列是覆盖度百分比
+                            coverage_percentage = float(data[5])
+                        else:
+                            coverage_percentage = 0
+                    else:
+                        coverage_percentage = 0
                 else:
+                    logger.warning(f"Failed to analyze {region}: {result.stderr}")
                     coverage_percentage = 0
-            else:
-                coverage_percentage = 50  # 默认值
+                    
+            except subprocess.TimeoutExpired:
+                logger.warning(f"Timeout analyzing {region}")
+                coverage_percentage = 0
+            except Exception as e:
+                logger.error(f"Error analyzing {region}: {e}")
+                coverage_percentage = 0
             
-            # 只返回分析的染色体数据
-            chromosome_names = [self.chromosome]
-            for i, chr_name in enumerate(chromosome_names):
-                coverage_data.append([i, group_index, round(coverage_percentage, 1)])
-                
-        except Exception as e:
-            logger.error(f"Coverage analysis failed: {e}")
-            # 使用模拟数据
-            coverage_data.append([0, group_index, 75.0])
+            # 添加到热力图数据 [染色体索引, 组别索引, 覆盖度]
+            coverage_data.append([chr_idx, group_index, round(coverage_percentage, 1)])
+            
+            # 打印进度
+            logger.info(f"  {chr_name}: {coverage_percentage:.1f}% coverage")
         
         return coverage_data
     
-    def generate_volcano_plot_data(self, group1_stats, group2_stats):
-        """生成火山图数据（覆盖度差异）"""
-        # 简化版本 - 生成模拟的基因级差异数据
-        np.random.seed(42)  # 保证结果一致
+    def generate_gene_density_analysis(self, group1_stats, group2_stats):
+        """生成真实的基因读段密度分析数据"""
         
-        volcano_data = []
+        # 如果没有GTF文件，回退到模拟数据
+        if not self.gtf_file:
+            logger.warning("No GTF file provided, using simulated data")
+            return self._generate_simulated_density_data()
+        
+        genes = self.parse_gtf_genes()
+        if not genes:
+            logger.warning("No genes parsed from GTF, using simulated data")
+            return self._generate_simulated_density_data()
+        
+        density_data = []
+        logger.info(f"Analyzing read density for {len(genes)} genes...")
+        
+        for i, gene in enumerate(genes):
+            try:
+                # 统计两组样本的读段数
+                reads1 = self.count_reads_in_region(self.sample1_bams, gene['chrom'], gene['start'], gene['end'])
+                reads2 = self.count_reads_in_region(self.sample2_bams, gene['chrom'], gene['start'], gene['end'])
+                
+                # 避免除零错误
+                if reads1 == 0 and reads2 == 0:
+                    continue
+                if reads1 == 0:
+                    reads1 = 1
+                if reads2 == 0:
+                    reads2 = 1
+                
+                # 计算密度比值和总读段数
+                density_ratio = reads2 / reads1
+                log2_ratio = np.log2(density_ratio)
+                total_reads = reads1 + reads2
+                log_total_reads = np.log10(total_reads) if total_reads > 0 else 0
+                
+                # 分类 - 匹配前端的分类名称
+                category = 'similar'
+                if abs(log2_ratio) > np.log2(1.5):  # 1.5倍差异阈值
+                    if log2_ratio > 0:
+                        category = 'sample2-enriched'
+                    else:
+                        category = 'sample1-enriched'
+                elif total_reads < 100:
+                    category = 'low-coverage'
+                
+                density_data.append([log2_ratio, log_total_reads, category, gene['name']])
+                
+                # 打印进度
+                if (i + 1) % 50 == 0:
+                    logger.info(f"  Processed {i + 1}/{len(genes)} genes")
+                    
+            except Exception as e:
+                logger.warning(f"Error analyzing gene {gene['name']}: {e}")
+                continue
+        
+        logger.info(f"Generated density data for {len(density_data)} genes")
+        return density_data
+    
+    def _generate_simulated_density_data(self):
+        """生成模拟的基因读段密度数据（用于没有GTF文件时）"""
+        np.random.seed(42)
+        
         gene_names = [
             'BRCA1', 'TP53', 'EGFR', 'MYC', 'KRAS', 'PIK3CA', 'PTEN', 'RB1', 'APC', 'VHL',
-            'BRAF', 'PIK3R1', 'ARID1A', 'CTNNB1', 'SMAD4', 'FBXW7', 'NRAS', 'PPP2R1A', 'ARID2', 'KMT2D'
+            'BRAF', 'PIK3R1', 'ARID1A', 'CTNNB1', 'SMAD4', 'FBXW7', 'NRAS', 'PPP2R1A'
         ]
         
-        # 基于实际数据计算比值
-        fold_change_base = group2_stats['mapping_rate'] / group1_stats['mapping_rate'] if group1_stats['mapping_rate'] > 0 else 1
-        
-        for i in range(100):  # 生成100个数据点
-            # 添加一些基于真实数据的变化
-            if i < len(gene_names):
-                gene_name = gene_names[i]
-                # 重要基因给一些显著变化
-                log2_fc = np.random.normal(0, 0.8) + (fold_change_base - 1) * 0.5
-            else:
-                gene_name = f'Gene_{i+1}'
-                log2_fc = np.random.normal(0, 0.5)
+        density_data = []
+        for i in range(200):
+            # 模拟读段数据
+            reads1 = max(1, int(np.random.exponential(500)))
+            reads2 = max(1, int(np.random.exponential(500)))
             
-            # 生成P值
-            p_value = np.random.beta(2, 8) * 0.1  # 偏向小P值
-            neg_log10_p = -np.log10(max(p_value, 1e-10))
+            density_ratio = reads2 / reads1
+            log2_ratio = np.log2(density_ratio)
+            total_reads = reads1 + reads2
+            log_total_reads = np.log10(total_reads)
             
-            # 确定显著性类别
-            if p_value < 0.05:
-                if log2_fc > 1:
-                    category = 'higher-coverage'
-                elif log2_fc < -1:
-                    category = 'lower-coverage'
+            # 分类
+            category = 'similar'
+            if abs(log2_ratio) > np.log2(1.5):
+                if log2_ratio > 0:
+                    category = 'sample2-enriched'
                 else:
-                    category = 'significant'
-            else:
-                category = 'non-significant'
+                    category = 'sample1-enriched'
+            elif total_reads < 200:
+                category = 'low-coverage'
             
-            volcano_data.append([log2_fc, neg_log10_p, category, gene_name])
+            gene_name = gene_names[i] if i < len(gene_names) else f'Gene_{i+1}'
+            density_data.append([log2_ratio, log_total_reads, category, gene_name])
         
-        return volcano_data
-    
+        return density_data
     def run_analysis(self):
         """运行完整分析"""
         start_time = time.time()
         logger.info("Starting BAM analysis...")
         
-        # 分析两个样本组
+        # 分析两个样本组的基础统计
         group1_stats = self.analyze_basic_stats(self.sample1_bams, "Group 1")
         group2_stats = self.analyze_basic_stats(self.sample2_bams, "Group 2")
         
         # 生成图表数据
         logger.info("Generating chart data...")
         
-        # 饼图数据
-        pie_data = [
-            {
-                "value": group1_stats['mapping_rate'],
-                "name": "Successfully Mapped",
-                "itemStyle": {"color": "#5470c6"}
-            },
-            {
-                "value": 100 - group1_stats['mapping_rate'],
-                "name": "Unmapped", 
-                "itemStyle": {"color": "#ee6666"}
-            },
-            {
-                "value": group1_stats['duplicate_reads'] / group1_stats['total_reads'] * 100 if group1_stats['total_reads'] > 0 else 0,
-                "name": "Duplicates",
-                "itemStyle": {"color": "#fac858"}
-            }
-        ]
+        # 1. 修正的饼图数据
+        pie_data = self.generate_pie_chart_data(group1_stats, group2_stats)
         
-        # MAPQ直方图
+        # 2. MAPQ直方图
         mapq_histogram = self.generate_mapq_histogram(
             group1_stats['mapq_scores'] + group2_stats['mapq_scores']
         )
         
-        # 插入片段大小分布
+        # 3. 插入片段大小分布
         insert_size_dist = self.generate_insert_size_distribution(
             group1_stats['insert_sizes'], 
             group2_stats['insert_sizes']
         )
         
-        # 染色体覆盖度热图
+        # 4. 染色体覆盖度热图 - 分析所有染色体
+        logger.info("Analyzing chromosome coverage for all chromosomes...")
         coverage_data = []
-        coverage_data.extend(self.analyze_chromosome_coverage(self.sample1_bams, 0))
-        coverage_data.extend(self.analyze_chromosome_coverage(self.sample2_bams, 1))
+        coverage_data.extend(self.analyze_all_chromosomes_coverage(self.sample1_bams, 0))
+        coverage_data.extend(self.analyze_all_chromosomes_coverage(self.sample2_bams, 1))
         
-        # 火山图数据
-        volcano_data = self.generate_volcano_plot_data(group1_stats, group2_stats)
+        # 5. 火山图数据
+        volcano_data = self.generate_gene_density_analysis(group1_stats, group2_stats)
         
         # 构建最终结果
         result = {
@@ -306,7 +459,8 @@ class BAMAnalyzer:
                 "volcano_plot": volcano_data
             },
             "analysis_info": {
-                "chromosome_analyzed": self.chromosome,
+                "region_size_per_chromosome": self.region_size,
+                "total_chromosomes_analyzed": 24,
                 "analysis_date": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "total_samples": len(self.sample1_bams) + len(self.sample2_bams),
                 "analysis_time_seconds": round(time.time() - start_time, 2)
@@ -315,11 +469,24 @@ class BAMAnalyzer:
         
         # 保存结果
         logger.info(f"Saving results to {self.output_file}")
+        output_dir = os.path.dirname(self.output_file)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            
         with open(self.output_file, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
         
+        # 打印统计摘要
         logger.info(f"Analysis completed in {time.time() - start_time:.2f} seconds")
         logger.info(f"Results saved to: {self.output_file}")
+        
+        # 打印覆盖度统计
+        group1_coverage = [d[2] for d in coverage_data if d[1] == 0]
+        group2_coverage = [d[2] for d in coverage_data if d[1] == 1]
+        
+        if group1_coverage and group2_coverage:
+            logger.info(f"Group 1 coverage: avg={np.mean(group1_coverage):.1f}%, range={min(group1_coverage):.1f}-{max(group1_coverage):.1f}%")
+            logger.info(f"Group 2 coverage: avg={np.mean(group2_coverage):.1f}%, range={min(group2_coverage):.1f}-{max(group2_coverage):.1f}%")
         
         return result
 
@@ -337,46 +504,34 @@ def read_bam_list(file_path):
     return bam_files
 
 def main():
-    parser = argparse.ArgumentParser(description='Analyze BAM files for visualization')
+    parser = argparse.ArgumentParser(description='Analyze BAM files for visualization (improved version)')
     parser.add_argument('--sample1', required=True, help='Sample 1 BAM list file')
     parser.add_argument('--sample2', required=True, help='Sample 2 BAM list file')
     parser.add_argument('--output', default='../frontend/public/bam_analysis_result.json', help='Output JSON file')
-    parser.add_argument('--chromosome', default='chr1', help='Chromosome to analyze (default: chr1)')
+    parser.add_argument('--region-size', type=int, default=100000, help='Region size per chromosome (default: 100kb)')
     
-    # 兼容位置参数的旧格式
-    if len(sys.argv) == 3 and not any(arg.startswith('--') for arg in sys.argv[1:]):
-        # 旧格式：python script.py sample1.txt sample2.txt
-        sample1_file = sys.argv[1]
-        sample2_file = sys.argv[2]
-        output_file = '../../frontend/public/bam_analysis_result.json'  # 默认输出到public
-        chromosome = '1'  # 改为不带chr前缀
-    else:
-        # 新格式：使用argparse
-        args = parser.parse_args()
-        sample1_file = args.sample1
-        sample2_file = args.sample2
-        output_file = args.output
-        chromosome = args.chromosome
+    args = parser.parse_args()
     
     try:
         # 读取BAM文件列表
-        sample1_bams = read_bam_list(sample1_file)
-        sample2_bams = read_bam_list(sample2_file)
+        sample1_bams = read_bam_list(args.sample1)
+        sample2_bams = read_bam_list(args.sample2)
         
         if not sample1_bams:
-            raise ValueError(f"No valid BAM files found in {sample1_file}")
+            raise ValueError(f"No valid BAM files found in {args.sample1}")
         if not sample2_bams:
-            raise ValueError(f"No valid BAM files found in {sample2_file}")
+            raise ValueError(f"No valid BAM files found in {args.sample2}")
         
         # 创建分析器并运行
-        analyzer = BAMAnalyzer(sample1_bams, sample2_bams, output_file, chromosome)
+        analyzer = BAMAnalyzer(sample1_bams, sample2_bams, args.output, args.region_size)
         result = analyzer.run_analysis()
         
-        print(f"✅ Analysis completed successfully!")
-        print(f"📊 Results saved to: {output_file}")  # ✅ 使用局部变量
-        print(f"🧬 Chromosome analyzed: {chromosome}")  # ✅ 使用局部变量
-        print(f"📈 Sample 1 mapping rate: {result['group1']['mappingRate']}%")
-        print(f"📈 Sample 2 mapping rate: {result['group2']['mappingRate']}%")
+        print(f"Analysis completed successfully!")
+        print(f"Results saved to: {args.output}")
+        print(f"Region size per chromosome: {args.region_size} bp")
+        print(f"Sample 1 mapping rate: {result['group1']['mappingRate']}%")
+        print(f"Sample 2 mapping rate: {result['group2']['mappingRate']}%")
+        print(f"Analysis time: {result['analysis_info']['analysis_time_seconds']} seconds")
         
     except Exception as e:
         logger.error(f"Analysis failed: {e}")

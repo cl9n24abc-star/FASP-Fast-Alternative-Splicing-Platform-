@@ -7,7 +7,13 @@ from pathlib import Path
 from config import Config
 import sys 
 from services.file_cleanup import cleanup_json_only, cleanup_public_files
-
+from services.sashimi_service import SashimiPlotService
+try:
+    sashimi_service = SashimiPlotService()
+    print("✅ SashimiPlotService 初始化成功")
+except Exception as e:
+    print(f"❌ SashimiPlotService 初始化失败: {e}")
+    sashimi_service = None
 def register_routes(app):
     """注册所有API路由到Flask应用"""
     
@@ -661,8 +667,12 @@ def register_routes(app):
                     print(f"使用BAM分析脚本: {analyzer_script}")
                     
                     python_executable = sys.executable or 'python3'
-                    cmd = [python_executable, analyzer_script, sample1_bam_list, sample2_bam_list]
-                    
+                    cmd = [
+                            python_executable, analyzer_script,
+                            '--sample1', sample1_bam_list,
+                            '--sample2', sample2_bam_list,
+                            '--output', output_file
+                        ]
                     result = subprocess.run(
                         cmd,
                         capture_output=True,
@@ -672,6 +682,52 @@ def register_routes(app):
                     )
                     
                     if result.returncode == 0 and os.path.exists(output_file):
+                        # BAM分析成功后，立即调用rmats_analyzer
+                        print("\n步骤2.1: 生成rMATS分析JSON文件...")
+                        
+                        try:
+                            # 找到rmats_analyzer.py脚本
+                            rmats_analyzer_script = None
+                            rmats_analyzer_paths = [
+                                os.path.join(current_dir, 'services', 'rmats_analyzer.py'),
+                                os.path.join(current_dir, 'rmats_analyzer.py'),
+                                os.path.join(current_dir, '..', 'rmats_analyzer.py'),
+                                os.path.join(os.getcwd(), 'rmats_analyzer.py'),
+                            ]
+                            
+                            for path in rmats_analyzer_paths:
+                                if os.path.exists(path):
+                                    rmats_analyzer_script = path
+                                    break
+                            
+                            if rmats_analyzer_script:
+                                print(f"使用rMATS分析脚本: {rmats_analyzer_script}")
+                                
+                                # 执行rmats_analyzer.py
+                                rmats_cmd = [python_executable, rmats_analyzer_script, rmats_dir]
+                                rmats_analyzer_result = subprocess.run(
+                                    rmats_cmd,
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=300,  # 5分钟超时
+                                    cwd=os.path.dirname(rmats_analyzer_script)
+                                )
+                                
+                                if rmats_analyzer_result.returncode == 0:
+                                    print("rmats_analysis_result.json 生成成功")
+                                    print(rmats_analyzer_result.stdout)
+                                else:
+                                    print(f"rmats_analyzer执行失败 (返回码: {rmats_analyzer_result.returncode})")
+                                    print(f"错误输出: {rmats_analyzer_result.stderr}")
+                                    print(f"标准输出: {rmats_analyzer_result.stdout}")
+                                    print(f"执行的命令: {' '.join(rmats_cmd)}")
+                            else:
+                                print("rmats_analyzer.py脚本未找到")
+                                
+                        except Exception as e:
+                            print(f"调用rmats_analyzer时出错: {e}")
+                        
+                        # 原有的BAM分析成功处理逻辑
                         with open(output_file, 'r', encoding='utf-8') as f:
                             analysis_result = json.load(f)
                         
@@ -708,7 +764,7 @@ def register_routes(app):
                     'message': f'BAM分析失败: {str(e)}',
                     'error': str(e)
                 }
-            
+    
             # 3. 可选：GTF处理（如果在rMATS处理中已包含，这里可以记录状态）
             if gtf_file:
                 results['gtf_processing'] = {
@@ -777,61 +833,6 @@ def register_routes(app):
             return jsonify({
                 'success': False,
                 'message': f'处理请求时出错: {str(e)}',
-                'error': str(e)
-            }), 500
-    # ==================== SashimiPlot 相关路由 ====================
-    
-    # 初始化SashimiPlot服务（在路由外部，避免重复初始化）
-    try:
-        from services.sashimi_service import SashimiPlotService
-        sashimi_service = SashimiPlotService()
-        print("✅ SashimiPlot服务初始化成功")
-    except ImportError as e:
-        print(f"⚠️ SashimiPlot服务导入失败: {e}")
-        sashimi_service = None
-    except Exception as e:
-        print(f"⚠️ SashimiPlot服务初始化失败: {e}")
-        sashimi_service = None
-    
-    @app.route('/api/sashimi/generate', methods=['POST', 'OPTIONS'])
-    def generate_sashimi_plot():
-        """生成 SashimiPlot（事件文件模式）"""
-        
-        if request.method == 'OPTIONS':
-            return jsonify({'status': 'ok'}), 200
-        
-        if not sashimi_service:
-            return jsonify({
-                'success': False,
-                'message': 'SashimiPlot服务未正确加载',
-                'error': 'Service not initialized'
-            }), 500
-        
-        try:
-            data = request.json
-            print("\n" + "🍣" * 20)
-            print("📌 收到SashimiPlot生成请求（rMATS事件文件模式）")
-            print("🍣" * 20)
-            print(json.dumps(data, indent=2, ensure_ascii=False))
-            print("-" * 50)
-            
-            # 使用rMATS模式处理
-            result = sashimi_service.generate_sashimi_by_rmats(data)
-            
-            if result['success']:
-                print("✅ rMATS模式SashimiPlot生成成功")
-                return jsonify(result)
-            else:
-                print("❌ rMATS模式SashimiPlot生成失败")
-                return jsonify(result), 400
-            
-        except Exception as e:
-            import traceback
-            print(f"❌ rMATS模式SashimiPlot处理过程中发生错误: {e}")
-            print(traceback.format_exc())
-            return jsonify({
-                'success': False,
-                'message': f'rMATS模式处理过程中发生错误: {str(e)}',
                 'error': str(e)
             }), 500
     

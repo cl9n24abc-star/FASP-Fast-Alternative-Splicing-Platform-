@@ -239,7 +239,7 @@
             <el-skeleton :rows="3" animated />
             <div class="loading-text">
               <el-icon class="is-loading"><Loading /></el-icon>
-              正在生成SashimiPlot，请稍候...
+              Generating SashimiPlot, please wait...
             </div>
           </div>
           
@@ -251,7 +251,7 @@
               show-icon 
               :closable="false"
             />
-            <p>请检查数据和文件路径是否正确</p>
+            <p>Please check if the data and file paths are correct</p>
           </div>
           
           <!-- 成功状态 - 显示生成的图片 -->
@@ -259,10 +259,10 @@
             <div class="sashimi-info">
               <el-tag type="success" size="large">
                 <el-icon><Check /></el-icon>
-                SashimiPlot生成成功
+                SashimiPlot generated successfully
               </el-tag>
               <span class="generation-time">
-                生成时间: {{ new Date(sashimiResult.timestamp).toLocaleString() }}
+                Generation Time: {{ new Date(sashimiResult.timestamp).toLocaleString() }}
               </span>
             </div>
             
@@ -321,7 +321,7 @@
             <!-- 显示结果详情 -->
             <div class="sashimi-details">
               <el-collapse v-model="activeCollapse">
-                <el-collapse-item title="SashimiPlot详细信息" name="details">
+                <el-collapse-item title="SashimiPlot details" name="details">
                   <div class="detail-grid">
                     <div class="detail-item">
                       <strong>Coordinates:</strong>
@@ -412,7 +412,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Check, Picture, Document, Download } from '@element-plus/icons-vue'
 import SplicingVisualization from './visualization.vue'
 import SashimiPlot from '../../Components/SashimiPlot.vue'
-
+const appStore = useAppStore()
 // Props
 const props = defineProps({
   modelValue: {
@@ -429,7 +429,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // Store
-const appStore = useAppStore()
+
 
 // Reactive Data
 const loading = ref(false)
@@ -456,11 +456,23 @@ const visible = computed({
   }
 })
 
-// 🆕 检查是否可以生成SashimiPlot
 const canGenerateSashimi = computed(() => {
+  console.log('🔍 === Sashimi 生成检查 ===')
+  console.log('1. isoformData.value:', isoformData.value)
+  console.log('2. appStore.getFilePaths:', appStore.getFilePaths)
+  console.log('3. appStore.isSashimiEnabled:', appStore.isSashimiEnabled)
+  
+  // 详细检查文件路径
+  const filePaths = appStore.getFilePaths
+  console.log('📁 文件路径详细检查:')
+  console.log('   - filePaths 类型:', typeof filePaths)
+  console.log('   - filePaths.sashimiBam1:', filePaths?.sashimiBam1)
+  console.log('   - filePaths.sashimiBam2:', filePaths?.sashimiBam2) 
+  console.log('   - filePaths.sashimiGff:', filePaths?.sashimiGff)
+  console.log('   - 所有 filePaths 键:', filePaths ? Object.keys(filePaths) : 'null')
+  
   if (!isoformData.value) return false
   
-  const filePaths = appStore.getFilePaths
   const hasRequiredData = !!(
     isoformData.value.chromosome && 
     isoformData.value.strand && 
@@ -469,10 +481,14 @@ const canGenerateSashimi = computed(() => {
   )
   
   const hasRequiredFiles = !!(
-    filePaths.sashimiBam1 && 
-    filePaths.sashimiBam2 && 
-    filePaths.sashimiGff
+    filePaths?.sashimiBam1 && 
+    filePaths?.sashimiBam2 && 
+    filePaths?.sashimiGff
   )
+  
+  console.log('4. hasRequiredData:', hasRequiredData)
+  console.log('5. hasRequiredFiles:', hasRequiredFiles)
+  console.log('6. 最终结果:', hasRequiredData && hasRequiredFiles)
   
   return hasRequiredData && hasRequiredFiles
 })

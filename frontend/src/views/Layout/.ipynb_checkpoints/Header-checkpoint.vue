@@ -32,7 +32,6 @@
     <!-- Right User Information -->
     <div class="header-right">
       <span class="user-info">
-        <el-avatar :size="28" />
         <span class="username">FASP</span>
       </span>
     </div>

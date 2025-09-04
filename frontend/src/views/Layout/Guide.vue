@@ -1,12 +1,12 @@
 <template>
   <div class="user-manual">
-    <!-- 头部导航 -->
+    <!-- Header Navigation -->
     <el-affix :offset="0">
       <div class="nav-header">
         <el-container>
           <el-header class="header">
             <div class="logo">
-              <h2>用户手册</h2>
+              <h2>FASP User Manual</h2>
             </div>
             <el-menu 
               mode="horizontal" 
@@ -14,10 +14,10 @@
               class="nav-menu"
               @select="scrollToSection"
             >
-              <el-menu-item index="quick-start">快速开始</el-menu-item>
-              <el-menu-item index="components">组件文档</el-menu-item>
-              <el-menu-item index="examples">使用示例</el-menu-item>
-              <el-menu-item index="faq">常见问题</el-menu-item>
+              <el-menu-item index="quick-start">Quick Start</el-menu-item>
+              <el-menu-item index="components">Features</el-menu-item>
+              <el-menu-item index="examples">Examples</el-menu-item>
+              <el-menu-item index="faq">FAQ</el-menu-item>
             </el-menu>
           </el-header>
         </el-container>
@@ -25,142 +25,179 @@
     </el-affix>
 
     <el-container class="main-container">
-      <!-- 侧边锚点导航 -->
-      <el-affix :offset="80" position="right">
-        <el-card class="anchor-nav" shadow="hover">
-          <el-menu 
-            :default-active="activeSection"
-            class="anchor-menu"
-            @select="scrollToSection"
-          >
-            <el-menu-item-group title="快速开始">
-              <el-menu-item index="installation">1.1 安装</el-menu-item>
-              <el-menu-item index="getting-started">1.2 快速开始</el-menu-item>
-            </el-menu-item-group>
-            
-            <el-menu-item-group title="组件文档">
-              <el-menu-item index="data-import">2.1 数据引入</el-menu-item>
-              <el-menu-item index="data-overview">2.2 数据概述</el-menu-item>
-              <el-menu-item index="data-analysis">2.3 数据分析</el-menu-item>
-            </el-menu-item-group>
-            
-            <el-menu-item-group title="其他">
-              <el-menu-item index="examples">3 使用示例</el-menu-item>
-              <el-menu-item index="faq">4 常见问题</el-menu-item>
-            </el-menu-item-group>
-          </el-menu>
-        </el-card>
-      </el-affix>
-
       <el-main class="content">
-        <!-- 1. 快速开始 -->
+        <!-- Side Anchor Navigation -->
+        <div class="anchor-nav-wrapper">
+          <el-card class="anchor-nav" shadow="hover">
+            <el-menu 
+              :default-active="activeSection"
+              class="anchor-menu"
+              @select="scrollToSection"
+            >
+              <el-menu-item-group title="Quick Start">
+                <el-menu-item index="installation">1.1 Installation</el-menu-item>
+                <el-menu-item index="getting-started">1.2 Getting Started</el-menu-item>
+              </el-menu-item-group>
+              
+              <el-menu-item-group title="Features">
+                <el-menu-item index="data-import">2.1 Data Import</el-menu-item>
+                <el-menu-item index="data-overview">2.2 Data Overview</el-menu-item>
+                <el-menu-item index="data-analysis">2.3 Analysis</el-menu-item>
+              </el-menu-item-group>
+              
+              <el-menu-item-group title="Others">
+                <el-menu-item index="examples">3 Examples</el-menu-item>
+                <el-menu-item index="faq">4 FAQ</el-menu-item>
+              </el-menu-item-group>
+            </el-menu>
+          </el-card>
+        </div>
+        <!-- 1. Quick Start -->
         <section id="quick-start" class="section">
           <el-card shadow="never" class="section-card">
-            <h1><el-icon><VideoPlay /></el-icon> 1. 快速开始</h1>
+            <h1><el-icon><VideoPlay /></el-icon> 1. Quick Start</h1>
             <el-divider />
             
-            <!-- 1.1 安装 -->
+            <!-- 1.1 Installation -->
             <div id="installation" class="subsection">
-              <h2><el-icon><Download /></el-icon> 1.1 安装</h2>
+              <h2><el-icon><Download /></el-icon> 1.1 Installation</h2>
+              
               <el-alert
-                title="安装前确保已安装 Node.js 16+ 和 npm"
+                title="Prerequisites"
                 type="info"
                 :closable="false"
                 style="margin-bottom: 20px;"
-              />
+              >
+                <p>Before installing FASP, ensure you have:</p>
+                <ul>
+                  <li><strong>Node.js 20.19+</strong> (for frontend)</li>
+                  <li><strong>Python 3.8+</strong> (for backend)</li>
+                  <li><strong>npm</strong> or <strong>yarn</strong></li>
+                  <li><strong>Git</strong></li>
+                </ul>
+              </el-alert>
               
               <el-tabs v-model="installTab" class="install-tabs">
-                <el-tab-pane label="npm" name="npm">
+                <el-tab-pane label="Git Clone" name="git">
                   <el-card class="code-card">
-                    <pre><code># 安装依赖
-npm install your-component
+                    <pre><code># Clone the repository
+git clone https://github.com/cl9n24abc-star/FASP-Fast-Alternative-Splicing-Platform-.git
+cd FASP-Fast-Alternative-Splicing-Platform-
 
-# 安装 Vue 3 (如果还没有)
-npm install vue@next
+# Setup backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate    # Windows
+pip install -r requirements.txt
 
-# 安装 Element Plus
-npm install element-plus</code></pre>
+# Setup frontend (new terminal)
+cd frontend
+npm install</code></pre>
                     <el-button 
                       type="primary" 
                       size="small" 
-                      @click="copyCode('npm install your-component')"
+                      @click="copyCode(gitInstallCode)"
                       style="margin-top: 10px;"
                     >
                       <el-icon><DocumentCopy /></el-icon>
-                      复制
+                      Copy
                     </el-button>
                   </el-card>
                 </el-tab-pane>
                 
-                <el-tab-pane label="yarn" name="yarn">
+                <el-tab-pane label="Docker" name="docker">
                   <el-card class="code-card">
-                    <pre><code># 安装依赖
-yarn add your-component
+                    <pre><code># Using Docker (if available)
+docker-compose up -d
 
-# 安装 Vue 3 (如果还没有)
-yarn add vue@next
+# Or build manually:
+docker build -t fasp-backend ./backend
+docker build -t fasp-frontend ./frontend
 
-# 安装 Element Plus
-yarn add element-plus</code></pre>
+# Run containers:
+docker run -p 5000:5000 fasp-backend
+docker run -p 5173:5173 fasp-frontend</code></pre>
                     <el-button 
                       type="primary" 
                       size="small" 
-                      @click="copyCode('yarn add your-component')"
+                      @click="copyCode(dockerInstallCode)"
                       style="margin-top: 10px;"
                     >
                       <el-icon><DocumentCopy /></el-icon>
-                      复制
+                      Copy
                     </el-button>
                   </el-card>
                 </el-tab-pane>
                 
-                <el-tab-pane label="CDN" name="cdn">
+                <el-tab-pane label="Check Environment" name="check">
                   <el-card class="code-card">
-                    <pre><code>&lt;!-- Vue 3 --&gt;
-&lt;script src="https://unpkg.com/vue@next"&gt;&lt;/script&gt;
+                    <pre><code># Check Node.js version (must be 20.19+)
+node --version
 
-&lt;!-- Element Plus --&gt;
-&lt;link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css"&gt;
-&lt;script src="https://unpkg.com/element-plus"&gt;&lt;/script&gt;
+# Check Python version
+python --version
 
-&lt;!-- Your Component --&gt;
-&lt;script src="https://unpkg.com/your-component"&gt;&lt;/script&gt;</code></pre>
+# Check npm version
+npm --version
+
+# Verify Git installation
+git --version</code></pre>
+                    <el-button 
+                      type="primary" 
+                      size="small" 
+                      @click="copyCode(checkEnvCode)"
+                      style="margin-top: 10px;"
+                    >
+                      <el-icon><DocumentCopy /></el-icon>
+                      Copy
+                    </el-button>
                   </el-card>
                 </el-tab-pane>
               </el-tabs>
             </div>
 
-            <!-- 1.2 快速开始 -->
+            <!-- 1.2 Getting Started -->
             <div id="getting-started" class="subsection">
-              <h2><el-icon><Lightning /></el-icon> 1.2 快速开始</h2>
+              <h2><el-icon><Lightning /></el-icon> 1.2 Getting Started</h2>
               
               <el-steps :active="currentStep" finish-status="success" align-center>
-                <el-step title="引入组件" />
-                <el-step title="注册组件" />
-                <el-step title="使用组件" />
-                <el-step title="完成" />
+                <el-step title="Start Backend" />
+                <el-step title="Start Frontend" />
+                <el-step title="Access Application" />
+                <el-step title="Complete" />
               </el-steps>
 
               <div style="margin: 30px 0;">
                 <el-card class="code-card">
                   <div class="code-header">
-                    <span>main.js</span>
-                    <el-button text type="primary" @click="copyCode(mainJsCode)">
+                    <span>Backend Server</span>
+                    <el-button text type="primary" @click="copyCode(backendStartCode)">
                       <el-icon><DocumentCopy /></el-icon>
                     </el-button>
                   </div>
-                  <pre><code>{{ mainJsCode }}</code></pre>
+                  <pre><code>{{ backendStartCode }}</code></pre>
                 </el-card>
 
                 <el-card class="code-card" style="margin-top: 20px;">
                   <div class="code-header">
-                    <span>App.vue</span>
-                    <el-button text type="primary" @click="copyCode(appVueCode)">
+                    <span>Frontend Server</span>
+                    <el-button text type="primary" @click="copyCode(frontendStartCode)">
                       <el-icon><DocumentCopy /></el-icon>
                     </el-button>
                   </div>
-                  <pre><code>{{ appVueCode }}</code></pre>
+                  <pre><code>{{ frontendStartCode }}</code></pre>
                 </el-card>
+
+                <el-alert
+                  title="Access Your Application"
+                  type="success"
+                  :closable="false"
+                  style="margin-top: 20px;"
+                >
+                  <p><strong>Frontend:</strong> <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></p>
+                  <p><strong>Backend API:</strong> <a href="http://localhost:5000" target="_blank">http://localhost:5000</a></p>
+                </el-alert>
               </div>
 
               <el-button-group>
@@ -169,221 +206,73 @@ yarn add element-plus</code></pre>
                   @click="currentStep = Math.min(currentStep + 1, 3)"
                   :disabled="currentStep >= 3"
                 >
-                  下一步
+                  Next Step
                 </el-button>
                 <el-button 
                   @click="currentStep = Math.max(currentStep - 1, 0)"
                   :disabled="currentStep <= 0"
                 >
-                  上一步
+                  Previous Step
                 </el-button>
               </el-button-group>
             </div>
           </el-card>
         </section>
 
-        <!-- 2. 组件文档 -->
+        <!-- 2. Features -->
         <section id="components" class="section">
           <el-card shadow="never" class="section-card">
-            <h1><el-icon><Grid /></el-icon> 2. 组件文档</h1>
+            <h1><el-icon><Grid /></el-icon> 2. Features</h1>
             <el-divider />
 
-            <!-- 2.1 数据引入 -->
+            <!-- 2.1 Data Import -->
             <div id="data-import" class="subsection">
-              <h2><el-icon><Upload /></el-icon> 2.1 数据引入</h2>
+              <h2><el-icon><Upload /></el-icon> 2.1 Data Import</h2>
               
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-card class="demo-card">
-                    <template #header>
-                      <span>支持的数据格式</span>
-                    </template>
-                    <el-tag v-for="format in dataFormats" :key="format" style="margin: 5px;">
-                      {{ format }}
-                    </el-tag>
-                  </el-card>
-                </el-col>
-                
-                <el-col :span="12">
-                  <el-card class="demo-card">
-                    <template #header>
-                      <span>数据引入示例</span>
-                    </template>
-                    <el-upload
-                      class="upload-demo"
-                      drag
-                      action="#"
-                      :auto-upload="false"
-                      :show-file-list="false"
-                      @change="handleFileChange"
-                    >
-                      <el-icon class="el-icon--upload"><Upload /></el-icon>
-                      <div class="el-upload__text">
-                        拖拽文件到此处或<em>点击上传</em>
-                      </div>
-                      <template #tip>
-                        <div class="el-upload__tip">
-                          支持 CSV、Excel、JSON 格式
-                        </div>
-                      </template>
-                    </el-upload>
-                  </el-card>
-                </el-col>
-              </el-row>
+              <el-card class="demo-card">
+                <template #header>
+                  <span>Supported Data Formats</span>
+                </template>
+                <el-tag v-for="format in dataFormats" :key="format" style="margin: 5px;">
+                  {{ format }}
+                </el-tag>
+              </el-card>
 
               <el-collapse v-model="activeCollapse" style="margin-top: 20px;">
-                <el-collapse-item title="API 数据引入" name="api">
+                <el-collapse-item title="rMATS Output Files" name="rmats">
                   <el-card class="code-card">
-                    <pre><code>// API 数据获取示例
-import { ref, onMounted } from 'vue'
-
-const data = ref([])
-
-const fetchData = async () => {
-  try {
-    const response = await fetch('/api/data')
-    data.value = await response.json()
-  } catch (error) {
-    console.error('数据获取失败:', error)
-  }
-}
-
-onMounted(() => {
-  fetchData()
-})</code></pre>
+                    <pre><code># Expected rMATS directory structure:
+rmats_output/
+├── SE.MATS.JC.txt     # Skipped Exon
+├── RI.MATS.JC.txt     # Retained Intron
+├── A3SS.MATS.JC.txt   # Alternative 3' Splice Site
+├── A5SS.MATS.JC.txt   # Alternative 5' Splice Site
+└── MXE.MATS.JC.txt    # Mutually Exclusive Exons</code></pre>
                   </el-card>
                 </el-collapse-item>
                 
-                <el-collapse-item title="本地数据引入" name="local">
+                <el-collapse-item title="BAM Files Preparation" name="bam">
                   <el-card class="code-card">
-                    <pre><code>// 本地数据引入示例
-import localData from './data/sample.json'
+                    <pre><code># Prepare BAM files for sashimi plots
+# 1. Sort BAM file
+samtools sort input.bam -o sorted.bam
 
-const data = ref(localData)
+# 2. Index BAM file  
+samtools index sorted.bam
 
-// 或者动态引入
-const loadLocalData = async () => {
-  const { default: data } = await import('./data/sample.json')
-  return data
-}</code></pre>
+# 3. Verify BAM file
+samtools view -H sorted.bam | head</code></pre>
                   </el-card>
                 </el-collapse-item>
               </el-collapse>
             </div>
-
-            <!-- 2.2 数据概述 -->
-            <div id="data-overview" class="subsection">
-              <h2><el-icon><View /></el-icon> 2.2 数据概述</h2>
-              
-              <el-row :gutter="20">
-                <el-col :span="8" v-for="(stat, index) in dataStats" :key="index">
-                  <el-card class="stat-card" shadow="hover">
-                    <el-statistic 
-                      :title="stat.title"
-                      :value="stat.value"
-                      :suffix="stat.suffix"
-                    >
-                      <template #prefix>
-                        <el-icon :style="{ color: stat.color }">
-                          <component :is="stat.icon" />
-                        </el-icon>
-                      </template>
-                    </el-statistic>
-                  </el-card>
-                </el-col>
-              </el-row>
-
-              <!-- 数据表格预览 -->
-              <el-card style="margin-top: 20px;">
-                <template #header>
-                  <div class="card-header">
-                    <span>数据预览</span>
-                    <el-button-group>
-                      <el-button size="small" @click="refreshData">
-                        <el-icon><Refresh /></el-icon>
-                        刷新
-                      </el-button>
-                      <el-button size="small" @click="exportData">
-                        <el-icon><Download /></el-icon>
-                        导出
-                      </el-button>
-                    </el-button-group>
-                  </div>
-                </template>
-                
-                <el-table :data="sampleData" border style="width: 100%">
-                  <el-table-column prop="id" label="ID" width="80" />
-                  <el-table-column prop="name" label="名称" width="120" />
-                  <el-table-column prop="value" label="数值" width="100" />
-                  <el-table-column prop="status" label="状态" width="100">
-                    <template #default="{ row }">
-                      <el-tag :type="getStatusType(row.status)">{{ row.status }}</el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="date" label="日期" />
-                </el-table>
-              </el-card>
-            </div>
-
-            <!-- 2.3 数据分析 -->
-            <div id="data-analysis" class="subsection">
-              <h2><el-icon><TrendCharts /></el-icon> 2.3 数据分析</h2>
-              
-              <el-tabs v-model="analysisTab">
-                <el-tab-pane label="图表分析" name="chart">
-                  <el-card>
-                    <div ref="chartRef" style="height: 300px;"></div>
-                    <el-button-group style="margin-top: 15px;">
-                      <el-button @click="changeChart('bar')" :type="chartType === 'bar' ? 'primary' : ''">
-                        柱状图
-                      </el-button>
-                      <el-button @click="changeChart('line')" :type="chartType === 'line' ? 'primary' : ''">
-                        折线图
-                      </el-button>
-                      <el-button @click="changeChart('pie')" :type="chartType === 'pie' ? 'primary' : ''">
-                        饼图
-                      </el-button>
-                    </el-button-group>
-                  </el-card>
-                </el-tab-pane>
-                
-                <el-tab-pane label="统计分析" name="stats">
-                  <el-row :gutter="20">
-                    <el-col :span="12">
-                      <el-card>
-                        <el-descriptions title="基础统计" :column="2" border>
-                          <el-descriptions-item label="平均值">{{ stats.average }}</el-descriptions-item>
-                          <el-descriptions-item label="最大值">{{ stats.max }}</el-descriptions-item>
-                          <el-descriptions-item label="最小值">{{ stats.min }}</el-descriptions-item>
-                          <el-descriptions-item label="总计">{{ stats.sum }}</el-descriptions-item>
-                        </el-descriptions>
-                      </el-card>
-                    </el-col>
-                    <el-col :span="12">
-                      <el-card>
-                        <el-progress 
-                          type="dashboard" 
-                          :percentage="75" 
-                          :color="colors"
-                        >
-                          <template #default="{ percentage }">
-                            <span class="percentage-value">{{ percentage }}%</span>
-                            <span class="percentage-label">完成度</span>
-                          </template>
-                        </el-progress>
-                      </el-card>
-                    </el-col>
-                  </el-row>
-                </el-tab-pane>
-              </el-tabs>
-            </div>
           </el-card>
         </section>
 
-        <!-- 3. 使用示例 -->
+        <!-- 3. Examples -->
         <section id="examples" class="section">
           <el-card shadow="never" class="section-card">
-            <h1><el-icon><View /></el-icon> 3. 使用示例</h1>
+            <h1><el-icon><View /></el-icon> 3. Usage Examples</h1>
             <el-divider />
             
             <el-row :gutter="20">
@@ -399,13 +288,13 @@ const loadLocalData = async () => {
                   <p>{{ example.description }}</p>
                   
                   <el-button type="primary" text @click="showExampleCode(example)">
-                    查看代码 <el-icon><ArrowRight /></el-icon>
+                    View Code <el-icon><ArrowRight /></el-icon>
                   </el-button>
                 </el-card>
               </el-col>
             </el-row>
 
-            <!-- 代码示例对话框 -->
+            <!-- Code Example Dialog -->
             <el-dialog 
               v-model="exampleDialog" 
               :title="selectedExample?.title"
@@ -413,38 +302,38 @@ const loadLocalData = async () => {
               top="5vh"
             >
               <el-tabs v-model="codeTab">
-                <el-tab-pane label="Template" name="template">
+                <el-tab-pane label="Backend" name="backend">
                   <el-card class="code-card">
-                    <pre><code>{{ selectedExample?.code.template }}</code></pre>
+                    <pre><code>{{ selectedExample?.code.backend }}</code></pre>
                   </el-card>
                 </el-tab-pane>
-                <el-tab-pane label="Script" name="script">
+                <el-tab-pane label="Frontend" name="frontend">
                   <el-card class="code-card">
-                    <pre><code>{{ selectedExample?.code.script }}</code></pre>
+                    <pre><code>{{ selectedExample?.code.frontend }}</code></pre>
                   </el-card>
                 </el-tab-pane>
-                <el-tab-pane label="Style" name="style">
+                <el-tab-pane label="Config" name="config">
                   <el-card class="code-card">
-                    <pre><code>{{ selectedExample?.code.style }}</code></pre>
+                    <pre><code>{{ selectedExample?.code.config }}</code></pre>
                   </el-card>
                 </el-tab-pane>
               </el-tabs>
               
               <template #footer>
-                <el-button @click="exampleDialog = false">关闭</el-button>
+                <el-button @click="exampleDialog = false">Close</el-button>
                 <el-button type="primary" @click="copyFullExample">
                   <el-icon><DocumentCopy /></el-icon>
-                  复制完整代码
+                  Copy Full Code
                 </el-button>
               </template>
             </el-dialog>
           </el-card>
         </section>
 
-        <!-- 4. 常见问题 -->
+        <!-- 4. FAQ -->
         <section id="faq" class="section">
           <el-card shadow="never" class="section-card">
-            <h1><el-icon><QuestionFilled /></el-icon> 4. 常见问题</h1>
+            <h1><el-icon><QuestionFilled /></el-icon> 4. Frequently Asked Questions</h1>
             <el-divider />
             
             <el-collapse v-model="activeFaq" accordion>
@@ -463,27 +352,23 @@ const loadLocalData = async () => {
               </el-collapse-item>
             </el-collapse>
 
-            <!-- 联系支持 -->
+            <!-- Contact Support -->
             <el-alert
-              title="还有其他问题？"
+              title="Need More Help?"
               type="info"
-              description="如果以上内容无法解决您的问题，请联系我们的技术支持团队"
+              description="If the above content cannot solve your problem, please contact our technical support team"
               :closable="false"
               style="margin-top: 30px;"
             >
               <template #default>
                 <el-button-group>
-                  <el-button type="primary">
+                  <el-button type="primary" @click="openGitHubIssues">
                     <el-icon><Message /></el-icon>
-                    在线客服
+                    GitHub Issues
                   </el-button>
-                  <el-button>
-                    <el-icon><Phone /></el-icon>
-                    技术支持
-                  </el-button>
-                  <el-button>
+                  <el-button @click="openDocumentation">
                     <el-icon><Document /></el-icon>
-                    提交反馈
+                    Documentation
                   </el-button>
                 </el-button-group>
               </template>
@@ -493,7 +378,7 @@ const loadLocalData = async () => {
       </el-main>
     </el-container>
 
-    <!-- 回到顶部 -->
+    <!-- Back to Top -->
     <el-backtop :right="100" :bottom="100" />
   </div>
 </template>
@@ -502,49 +387,49 @@ const loadLocalData = async () => {
 import { ref, reactive, onMounted, nextTick, getCurrentInstance } from 'vue'
 import {
   VideoPlay, Download, Lightning, Grid, Upload, View, TrendCharts,
-  Refresh, DocumentCopy, ArrowRight, QuestionFilled, Message, Phone, Document
+  Refresh, DocumentCopy, ArrowRight, QuestionFilled, Message, Document
 } from '@element-plus/icons-vue'
 
-// 获取当前实例以使用 $echarts
+// Get current instance
 const { proxy } = getCurrentInstance()
 
-// 响应式数据
+// Reactive data
 const activeSection = ref('quick-start')
-const installTab = ref('npm')
+const installTab = ref('git')
 const currentStep = ref(0)
 const activeCollapse = ref([])
-const analysisTab = ref('chart')
+const analysisTab = ref('splicing')
 const chartType = ref('bar')
 const exampleDialog = ref(false)
 const selectedExample = ref(null)
-const codeTab = ref('template')
+const codeTab = ref('backend')
 const activeFaq = ref(0)
 
-// 图表引用
+// Chart reference
 const chartRef = ref(null)
 let chart = null
 
-// 数据
-const dataFormats = ['CSV', 'Excel', 'JSON', 'XML', 'API']
+// Data for bioinformatics platform
+const dataFormats = ['BAM files', 'rMATS output (.txt)', 'GTF/GFF annotation', 'BAM list files (.txt)', 'JSON results']
 
 const dataStats = reactive([
-  { title: '数据条数', value: 1234, suffix: '条', icon: 'Grid', color: '#409EFF' },
-  { title: '处理速度', value: 95, suffix: '%', icon: 'TrendCharts', color: '#67C23A' },
-  { title: '准确率', value: 99.2, suffix: '%', icon: 'View', color: '#E6A23C' }
+  { title: 'Splicing Events', value: 15420, suffix: 'events', icon: 'Grid', color: '#409EFF' },
+  { title: 'Analysis Speed', value: 95, suffix: '%', icon: 'TrendCharts', color: '#67C23A' },
+  { title: 'Accuracy Rate', value: 99.2, suffix: '%', icon: 'View', color: '#E6A23C' }
 ])
 
 const sampleData = reactive([
-  { id: 1, name: '示例数据1', value: 100, status: '正常', date: '2024-01-01' },
-  { id: 2, name: '示例数据2', value: 200, status: '警告', date: '2024-01-02' },
-  { id: 3, name: '示例数据3', value: 150, status: '错误', date: '2024-01-03' },
-  { id: 4, name: '示例数据4', value: 300, status: '正常', date: '2024-01-04' }
+  { id: 1, event: 'SE_12345', type: 'Skipped Exon', pvalue: 0.001, status: 'Significant', chromosome: 'chr1' },
+  { id: 2, event: 'RI_67890', type: 'Retained Intron', pvalue: 0.045, status: 'Moderate', chromosome: 'chr2' },
+  { id: 3, event: 'A5SS_11111', type: "Alt 5' SS", pvalue: 0.8, status: 'Not Significant', chromosome: 'chr3' },
+  { id: 4, event: 'A3SS_22222', type: "Alt 3' SS", pvalue: 0.02, status: 'Significant', chromosome: 'chr4' }
 ])
 
 const stats = reactive({
-  average: 187.5,
-  max: 300,
-  min: 100,
-  sum: 750
+  totalEvents: 15420,
+  significant: 3280,
+  lowPvalue: 2890,
+  completion: 95
 })
 
 const colors = [
@@ -557,181 +442,151 @@ const colors = [
 
 const examples = [
   {
-    title: '基础用法',
-    difficulty: '简单',
-    description: '展示组件的基本使用方法',
+    title: 'Basic rMATS Analysis',
+    difficulty: 'Beginner',
+    description: 'Analyze alternative splicing events from rMATS output files',
     code: {
-      template: `<template>
-  <div>
-    <your-component :data="data" />
-  </div>
-</template>`,
-      script: `<script setup>
-import { ref } from 'vue'
-
-const data = ref([1, 2, 3, 4, 5])
-<\/script>`,
-      style: `<style scoped>
-div {
-  padding: 20px;
-}
-</style>`
+      backend: `# Backend setup for rMATS analysis
+cd backend
+source venv/bin/activate
+python app.py`,
+      frontend: `# Frontend development server
+cd frontend
+npm install
+npm run dev`,
+      config: `# Configuration example
+{
+  "rmats_dir": "/path/to/rmats/output",
+  "bam_files": {
+    "sample1": "/path/to/sample1.bam",
+    "sample2": "/path/to/sample2.bam"
+  },
+  "gff_file": "/path/to/annotation.gtf"
+}`
     }
   },
   {
-    title: '高级配置',
-    difficulty: '中等',
-    description: '使用高级配置选项',
+    title: 'Sashimi Plot Generation',
+    difficulty: 'Intermediate',
+    description: 'Generate sashimi plots for splice junction visualization',
     code: {
-      template: `<template>
-  <div>
-    <your-component 
-      :data="data"
-      :options="options"
-      @change="handleChange"
-    />
-  </div>
-</template>`,
-      script: `<script setup>
-import { ref, reactive } from 'vue'
-
-const data = ref([1, 2, 3, 4, 5])
-const options = reactive({
-  theme: 'dark',
-  animation: true
-})
-
-const handleChange = (value) => {
-  console.log('Changed:', value)
-}
-<\/script>`,
-      style: `<style scoped>
-div {
-  padding: 20px;
-  background: #f5f7fa;
-}
-</style>`
-    }
-  },
-  {
-    title: '自定义主题',
-    difficulty: '困难',
-    description: '创建和使用自定义主题',
-    code: {
-      template: `<template>
-  <div class="custom-theme">
-    <your-component 
-      :data="data"
-      :theme="customTheme"
-    />
-  </div>
-</template>`,
-      script: `<script setup>
-import { ref, computed } from 'vue'
-
-const data = ref([1, 2, 3, 4, 5])
-
-const customTheme = computed(() => ({
-  colors: ['#ff6b6b', '#4ecdc4', '#45b7d1'],
-  fontSize: 14,
-  borderRadius: 8
-}))
-<\/script>`,
-      style: `<style scoped>
-.custom-theme {
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-}
-</style>`
+      backend: `# Sashimi plot API endpoint
+@app.route('/api/sashimi/generate', methods=['POST'])
+def generate_sashimi():
+    data = request.get_json()
+    result = sashimi_service.generate_plot(data)
+    return jsonify(result)`,
+      frontend: `// Frontend sashimi plot component
+const generateSashimi = async (coordinates) => {
+  const response = await fetch('/api/sashimi/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(coordinates)
+  })
+  return await response.json()
+}`,
+      config: `# Sashimi configuration
+{
+  "coordinates": "chr1:1000-2000",
+  "event_type": "SE",
+  "output_format": "pdf"
+}`
     }
   }
 ]
 
 const faqs = [
   {
-    question: '如何解决安装依赖失败的问题？',
-    answer: '通常是网络问题导致的，建议切换到国内镜像源或使用代理。',
-    code: `# 使用淘宝镜像
-npm config set registry https://registry.npmmirror.com/
+    question: 'How do I prepare my rMATS output files?',
+    answer: 'Ensure your rMATS output directory contains all necessary files: SE.MATS.JC.txt, RI.MATS.JC.txt, etc. The directory structure should match the expected format.',
+    code: `# Expected rMATS directory structure:
+rmats_output/
+├── SE.MATS.JC.txt
+├── RI.MATS.JC.txt  
+├── A3SS.MATS.JC.txt
+├── A5SS.MATS.JC.txt
+└── MXE.MATS.JC.txt`
+  },
+  {
+    question: 'Why are my BAM files not being recognized?',
+    answer: 'Check that BAM files are properly indexed (.bai files present) and paths are correct. Ensure BAM files are sorted and contain proper read groups.',
+    code: `# Index your BAM files:
+samtools index sample.bam
 
-# 或临时使用
-npm install --registry https://registry.npmmirror.com/`
+# Verify BAM file:
+samtools view -H sample.bam | head`
   },
   {
-    question: '组件不显示是什么原因？',
-    answer: '请检查是否正确引入了样式文件和组件注册。',
-    code: `// main.js 中确保引入样式
-import 'element-plus/dist/index.css'
-import './your-component.css'`
+    question: 'Node.js version compatibility issues?',
+    answer: 'FASP requires Node.js 20.19+ due to Vite 7. Install the correct version using nvm or update your Node.js.',
+    code: `# Install Node.js 20+ using nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.bashrc
+nvm install 20
+nvm use 20`
   },
   {
-    question: '如何自定义组件样式？',
-    answer: '可以通过 CSS 变量或者深度选择器来覆盖默认样式。',
-    code: `:deep(.your-component) {
-  --primary-color: #409EFF;
-  --border-radius: 4px;
-}`
-  },
-  {
-    question: '数据更新后组件不刷新怎么办？',
-    answer: '确保使用响应式数据，并检查是否正确使用了 ref 或 reactive。',
-    code: `// 正确的响应式数据使用
-const data = ref([])
-const updateData = () => {
-  data.value = newData // 这样会触发更新
-}`
+    question: 'How do I interpret the p-values in results?',
+    answer: 'P-values indicate the statistical significance of splicing differences. Values < 0.05 are typically considered significant, but adjust for multiple testing.',
+    code: `# Filter significant events:
+significant_events = results[results['PValue'] < 0.05]
+print(f"Found {len(significant_events)} significant events")`
   }
 ]
 
-// 代码字符串
-const mainJsCode = `import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import { createPinia } from 'pinia'
+// Installation code strings
+const gitInstallCode = `# Clone the repository
+git clone https://github.com/cl9n24abc-star/FASP-Fast-Alternative-Splicing-Platform-.git
+cd FASP-Fast-Alternative-Splicing-Platform-
 
-// 导入Element Plus
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+# Setup backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\\Scripts\\activate    # Windows
+pip install -r requirements.txt
 
-// 导入你的组件
-import YourComponent from './components/YourComponent.vue'
+# Setup frontend (new terminal)
+cd frontend
+npm install`
 
-const app = createApp(App)
+const dockerInstallCode = `# Using Docker (if available)
+docker-compose up -d
 
-app.use(ElementPlus)
-app.use(createPinia())
-app.use(router)
+# Or build manually:
+docker build -t fasp-backend ./backend
+docker build -t fasp-frontend ./frontend
 
-// 注册全局组件
-app.component('YourComponent', YourComponent)
+# Run containers:
+docker run -p 5000:5000 fasp-backend
+docker run -p 5173:5173 fasp-frontend`
 
-app.mount('#app')`
+const checkEnvCode = `# Check Node.js version (must be 20.19+)
+node --version
 
-const appVueCode = `<template>
-  <div id="app">
-    <your-component 
-      :data="sampleData"
-      @change="handleDataChange"
-    />
-  </div>
-</template>
+# Check Python version
+python --version
 
-<script setup>
-import { ref } from 'vue'
+# Check npm version
+npm --version
 
-const sampleData = ref([
-  { name: '数据1', value: 100 },
-  { name: '数据2', value: 200 },
-  { name: '数据3', value: 150 }
-])
+# Verify Git installation
+git --version`
 
-const handleDataChange = (newData) => {
-  console.log('数据变化:', newData)
-}
-<\/script>`
+const backendStartCode = `# Start backend server
+cd backend
+source venv/bin/activate
+python app.py
 
-// 方法
+# Backend API available at: http://localhost:5000`
+
+const frontendStartCode = `# Start frontend (new terminal)
+cd frontend  
+npm run dev
+
+# Frontend available at: http://localhost:5173`
+
+// Methods
 const scrollToSection = (key) => {
   activeSection.value = key
   const element = document.getElementById(key)
@@ -742,30 +597,25 @@ const scrollToSection = (key) => {
 
 const copyCode = (code) => {
   navigator.clipboard.writeText(code).then(() => {
-    proxy.$message.success('代码已复制到剪贴板')
+    proxy.$message.success('Code copied to clipboard!')
   })
-}
-
-const handleFileChange = (file) => {
-  console.log('文件上传:', file)
-  proxy.$message.info(`已选择文件: ${file.name}`)
 }
 
 const getStatusType = (status) => {
   const typeMap = {
-    '正常': 'success',
-    '警告': 'warning',
-    '错误': 'danger'
+    'Significant': 'success',
+    'Moderate': 'warning',
+    'Not Significant': 'danger'
   }
   return typeMap[status] || 'info'
 }
 
 const refreshData = () => {
-  proxy.$message.success('数据已刷新')
+  proxy.$message.success('Data refreshed')
 }
 
 const exportData = () => {
-  proxy.$message.success('数据导出成功')
+  proxy.$message.success('Data exported successfully')
 }
 
 const initChart = () => {
@@ -779,14 +629,14 @@ const changeChart = (type) => {
   chartType.value = type
   if (!chart) return
   
-  const data = [120, 200, 150, 80, 70]
-  const xData = ['周一', '周二', '周三', '周四', '周五']
+  const data = [3280, 2150, 1890, 1650, 1440]
+  const xData = ['SE', 'RI', 'A3SS', 'A5SS', 'MXE']
   
   let option = {}
   
   if (type === 'pie') {
     option = {
-      title: { text: '饼图示例', left: 'center' },
+      title: { text: 'Event Type Distribution', left: 'center' },
       tooltip: { trigger: 'item' },
       series: [{
         type: 'pie',
@@ -797,7 +647,7 @@ const changeChart = (type) => {
     }
   } else {
     option = {
-      title: { text: type === 'bar' ? '柱状图示例' : '折线图示例' },
+      title: { text: type === 'bar' ? 'Splicing Events by Type' : 'P-Value Distribution' },
       tooltip: { trigger: 'axis' },
       xAxis: {
         type: 'category',
@@ -818,26 +668,34 @@ const changeChart = (type) => {
 const showExampleCode = (example) => {
   selectedExample.value = example
   exampleDialog.value = true
-  codeTab.value = 'template'
+  codeTab.value = 'backend'
 }
 
 const copyFullExample = () => {
   const example = selectedExample.value
-  const fullCode = `${example.code.template}
+  const fullCode = `${example.code.backend}
 
-${example.code.script}
+${example.code.frontend}
 
-${example.code.style}`
+${example.code.config}`
   copyCode(fullCode)
 }
 
-// 生命周期
+const openGitHubIssues = () => {
+  window.open('https://github.com/cl9n24abc-star/FASP-Fast-Alternative-Splicing-Platform-/issues', '_blank')
+}
+
+const openDocumentation = () => {
+  window.open('https://github.com/cl9n24abc-star/FASP-Fast-Alternative-Splicing-Platform-', '_blank')
+}
+
+// Lifecycle
 onMounted(() => {
   nextTick(() => {
     initChart()
   })
   
-  // 监听滚动事件更新活跃导航
+  // Listen for scroll events to update active navigation
   window.addEventListener('scroll', () => {
     const sections = ['quick-start', 'components', 'examples', 'faq']
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop
@@ -887,6 +745,20 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   background: transparent;
+  position: relative;
+}
+
+.content {
+  padding: 20px;
+  padding-right: 240px; /* Make space for sidebar */
+  position: relative;
+}
+
+.anchor-nav-wrapper {
+  position: fixed;
+  right: 20px;
+  top: 100px;
+  z-index: 100;
 }
 
 .anchor-nav {
@@ -897,10 +769,6 @@ onMounted(() => {
 
 .anchor-menu {
   border: none;
-}
-
-.content {
-  padding: 20px;
 }
 
 .section {
@@ -1011,7 +879,7 @@ onMounted(() => {
   color: #909399;
 }
 
-/* 响应式设计 */
+/* Responsive Design */
 @media (max-width: 768px) {
   .header {
     flex-direction: column;
@@ -1032,7 +900,7 @@ onMounted(() => {
   }
 }
 
-/* 滚动条样式 */
+/* Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 6px;
 }

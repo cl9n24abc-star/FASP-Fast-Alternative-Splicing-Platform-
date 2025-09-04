@@ -147,16 +147,16 @@
             <el-card shadow="hover" class="chart-card">
               <template #header>
                 <div class="chart-header">
-                  <span>🌋 Coverage Difference Volcano Plot</span>
+                  <span>📊 Gene Read Density Analysis</span>
                   <div class="chart-controls">
-                    <span class="control-label">P-value Threshold:</span>
+                    <span class="control-label">Density Ratio Threshold:</span>
                     <el-slider 
-                      v-model="bamVolcanoThreshold.pvalue" 
-                      :min="0.001" 
-                      :max="0.1" 
-                      :step="0.001"
-                      style="width: 120px; margin: 0 10px;"
-                      :format-tooltip="(val) => val.toFixed(3)"
+                        v-model="bamVolcanoThreshold.pvalue" 
+                        :min="1.5" 
+                        :max="5.0" 
+                        :step="0.1"
+                        style="width: 120px; margin: 0 10px;"
+                        :format-tooltip="(val) => val.toFixed(1) + 'x'"
                     />
                   </div>
                 </div>
@@ -279,7 +279,7 @@
                     <el-slider 
                       v-model="volcanoThreshold.fdr" 
                       :min="0.01" 
-                      :max="0.1" 
+                      :max="0.8" 
                       :step="0.01"
                       style="width: 150px; margin: 0 15px;"
                       :format-tooltip="(val) => val.toFixed(2)"
@@ -533,7 +533,7 @@ const initMapqChart = () => {
           }
         },
         grid: {
-          left: '10%',
+          left: '15%',
           right: '5%',
           bottom: '15%',
           top: '15%'
@@ -698,7 +698,7 @@ const option = {
     }
   },
   grid: {
-    left: '10%',
+    left: '15%',
     right: '5%',
     bottom: '25%',
     top: '25%'
@@ -1108,227 +1108,183 @@ const updateBamVolcanoChart = () => {
 if (!bamVolcanoChart) return
 
 // 生成覆盖度差异火山图数据
-const data = []
+let data = []
+let validData = []
 const geneNames = ['BRCA1', 'TP53', 'EGFR', 'MYC', 'KRAS', 'PIK3CA', 'PTEN', 'RB1', 'APC', 'VHL']
 
 for (let i = 0; i < 200; i++) {
-// log2(覆盖度比值) - 范围从-3到3
-const log2CoverageRatio = (Math.random() - 0.5) * 6
-// P值 - 0.0001到0.2之间
-const pvalue = Math.random() * 0.2 + 0.0001
-const negLog10Pvalue = -Math.log10(pvalue)
-
-let category = 'non-significant'
-let geneName = `Gene_${i + 1}`
-
-// 为一些点添加已知基因名
-if (i < geneNames.length) {
-  geneName = geneNames[i]
+  // 模拟基因读段密度数据
+  const reads1 = Math.floor(Math.random() * 5000) + 100    // Sample1读段数
+  const reads2 = Math.floor(Math.random() * 5000) + 100    // Sample2读段数
+  const densityRatio = reads2 / reads1                      // 密度比值
+  const log2Ratio = Math.log2(densityRatio)               // log2转换
+  const totalReads = reads1 + reads2                       // 总读段数(Y轴)
+  const logTotalReads = Math.log10(totalReads)            // log10转换
+  
+  let category = 'similar'
+  let geneName = `Gene_${i + 1}`
+  
+  if (i < geneNames.length) {
+    geneName = geneNames[i]
+  }
+  
+  // 分类逻辑
+  if (Math.abs(log2Ratio) > Math.log2(bamVolcanoThreshold.value.pvalue)) {
+    if (log2Ratio > 0) category = 'sample2-enriched'
+    else category = 'sample1-enriched'
+  } else {
+    if (totalReads < 500) category = 'low-coverage'
+    else category = 'similar'
+  }
+  
+  data.push([log2Ratio, logTotalReads, category, geneName])
 }
 
-if (pvalue < bamVolcanoThreshold.value.pvalue) {
-  if (log2CoverageRatio > 1) category = 'higher-coverage'
-  else if (log2CoverageRatio < -1) category = 'lower-coverage'
-  else category = 'significant'
-}
+// 数据验证（移到循环后面）
+console.log('Generated data length:', data.length)
+console.log('Sample data:', data.slice(0, 3))
 
-data.push([log2CoverageRatio, negLog10Pvalue, category, geneName])
+validData = data.filter(item => {
+  return Array.isArray(item) && item.length >= 4
+})
+
+console.log('Valid data length:', validData.length)
+
+if (validData.length === 0) {
+  validData = [[0, 2, 'similar', 'DefaultGene']]
 }
 
 // 计算统计信息
 const stats = {
-total: data.length,
-significant: data.filter(d => d[2] !== 'non-significant').length,
-higherCoverage: data.filter(d => d[2] === 'higher-coverage').length,
-lowerCoverage: data.filter(d => d[2] === 'lower-coverage').length,
-other: data.filter(d => d[2] === 'significant').length
+  total: validData.length,
+  sample2Enriched: validData.filter(d => d[2] === 'sample2-enriched').length,
+  sample1Enriched: validData.filter(d => d[2] === 'sample1-enriched').length,
+  similar: validData.filter(d => d[2] === 'similar').length,
+  lowCoverage: validData.filter(d => d[2] === 'low-coverage').length
 }
 
 const option = {
-title: {
-  text: 'Coverage Difference Volcano Plot',
-  left: 'center',
-  textStyle: { fontSize: 16, fontWeight: 'bold', color: '#2c3e50' },
-  top: 15
-},
-legend: {
-  data: [
-    {name: 'Higher Coverage', icon: 'circle'},
-    {name: 'Lower Coverage', icon: 'circle'},
-    {name: 'Significant', icon: 'circle'},
-    {name: 'Non-significant', icon: 'circle'}
-  ],
-  top: 50,
-  left: 'center',
-  itemGap: 20,
-  textStyle: { fontSize: 12 }
-},
-tooltip: {
-  trigger: 'item',
-  backgroundColor: 'rgba(0,0,0,0.85)',
-  borderWidth: 0,
-  textStyle: { color: '#fff', fontSize: 13 },
-  formatter: function(params) {
-    const foldChange = Math.pow(2, params.data[0]).toFixed(2)
-    const pValue = Math.pow(10, -params.data[1]).toExponential(2)
-    
-    let categoryColor = '#d0d0d0'
-    let categoryText = params.data[2]
-    
-    switch(params.data[2]) {
-      case 'higher-coverage': 
-        categoryColor = '#ee6666'
-        categoryText = 'Higher Coverage'
-        break
-      case 'lower-coverage': 
-        categoryColor = '#5470c6'
-        categoryText = 'Lower Coverage'
-        break
-      case 'significant': 
-        categoryColor = '#91cc75'
-        categoryText = 'Significant'
-        break
-      case 'non-significant': 
-        categoryColor = '#d0d0d0'
-        categoryText = 'Non-significant'
-        break
+  title: {
+    text: 'Gene Read Density Analysis',
+    left: 'center',
+    textStyle: { fontSize: 16, fontWeight: 'bold', color: '#2c3e50' },
+    top: 15
+  },
+  tooltip: {
+    trigger: 'item',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    borderWidth: 0,
+    textStyle: { color: '#fff', fontSize: 13 },
+    formatter: function(params) {
+      const [log2Ratio, logTotalReads, category, geneName] = params.data
+      const ratio = Math.pow(2, log2Ratio).toFixed(2)
+      const totalReads = Math.pow(10, logTotalReads).toFixed(0)
+      
+      return `<div style="padding: 10px;">
+                <div style="font-weight: bold; margin-bottom: 6px; color: #4fc3f7;">
+                  ${geneName}
+                </div>
+                <div style="margin-bottom: 4px;">
+                  Density Ratio: <span style="color: #ffa726;">${ratio}x</span>
+                </div>
+                <div style="margin-bottom: 4px;">
+                  Log2 Ratio: <span style="color: #ffa726;">${log2Ratio.toFixed(2)}</span>
+                </div>
+                <div style="margin-bottom: 4px;">
+                  Total Reads: <span style="color: #ffa726;">${totalReads}</span>
+                </div>
+                <div style="color: #fff; font-weight: bold;">
+                  ● ${category}
+                </div>
+              </div>`
     }
-    
-    return `<div style="padding: 10px;">
-              <div style="font-weight: bold; margin-bottom: 6px; color: #4fc3f7;">
-                ${params.data[3]}
-              </div>
-              <div style="margin-bottom: 4px;">
-                Coverage Ratio: <span style="color: #ffa726;">${foldChange}x</span>
-              </div>
-              <div style="margin-bottom: 4px;">
-                Log2(Ratio): <span style="color: #ffa726;">${params.data[0].toFixed(2)}</span>
-              </div>
-              <div style="margin-bottom: 4px;">
-                P-value: <span style="color: #ffa726;">${pValue}</span>
-              </div>
-              <div style="margin-bottom: 4px;">
-                -log10(P): <span style="color: #ffa726;">${params.data[1].toFixed(2)}</span>
-              </div>
-              <div style="color: ${categoryColor}; font-weight: bold;">
-                ● ${categoryText}
-              </div>
-            </div>`
-  }
-},
-grid: {
-  left: '10%',
-  right: '10%',
-  bottom: '25%',
-  top: '25%'
-},
-xAxis: {
-  type: 'value',
-  name: 'log2(Coverage Ratio)',
-  nameLocation: 'middle',
-  nameGap: 35,
-  nameTextStyle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333'
   },
-  axisLine: { 
-    onZero: true, 
-    lineStyle: { color: '#333', width: 2 } 
+  grid: {
+    left: '15%',
+    right: '10%',
+    bottom: '25%',
+    top: '25%'
   },
-  splitLine: { 
-    show: true, 
-    lineStyle: { type: 'dashed', opacity: 0.3 } 
-  },
-  axisLabel: {
-    fontSize: 12,
-    color: '#666'
-  }
-},
-yAxis: {
-  type: 'value',
-  name: '-log10(P-value)',
-  nameLocation: 'middle',
-  nameGap: 45,
-  nameTextStyle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333'
-  },
-  min: 0,
-  splitLine: { 
-    show: true, 
-    lineStyle: { type: 'dashed', opacity: 0.3 } 
-  },
-  axisLabel: {
-    fontSize: 12,
-    color: '#666'
-  }
-},
-series: [{
-  type: 'scatter',
-  data: data,
-  symbolSize: function(data) {
-    return data[2] === 'non-significant' ? 4 : 8
-  },
-  itemStyle: {
-    color: function(params) {
-      const colors = {
-        'higher-coverage': '#ee6666',
-        'lower-coverage': '#5470c6', 
-        'significant': '#91cc75',
-        'non-significant': '#d0d0d0'
-      }
-      return colors[params.data[2]] || '#d0d0d0'
-    },
-    opacity: 0.8,
-    borderWidth: 0.5,
-    borderColor: '#fff'
-  },
-  emphasis: {
-    itemStyle: {
-      shadowBlur: 10,
-      shadowColor: 'rgba(0, 0, 0, 0.3)',
-      borderWidth: 2,
-      borderColor: '#fff',
-      opacity: 1
-    },
-    scale: 1.2
-  },
-  markLine: {
-    silent: true,
-    lineStyle: {
-      color: '#ff6b6b',
-      type: 'dashed',
-      width: 2,
-      opacity: 0.8
-    },
-    label: {
-      show: true,
-      position: 'end',
-      fontSize: 11,
+  xAxis: {
+    type: 'value',
+    name: 'Log2(Sample2/Sample1 Read Density)',
+    nameLocation: 'middle',
+    nameGap: 35,
+    nameTextStyle: {
+      fontSize: 14,
       fontWeight: 'bold',
-      color: '#ff6b6b',
-      backgroundColor: 'rgba(255, 255, 255, 0.8)',
-      padding: [2, 4],
-      borderRadius: 3
+      color: '#333'
     },
-    data: [
-      { 
-        yAxis: -Math.log10(bamVolcanoThreshold.value.pvalue),
-        label: { formatter: `P = ${bamVolcanoThreshold.value.pvalue}` }
+    axisLine: { 
+      onZero: true, 
+      lineStyle: { color: '#333', width: 2 } 
+    },
+    splitLine: { 
+      show: true, 
+      lineStyle: { type: 'dashed', opacity: 0.3 } 
+    },
+    axisLabel: {
+      fontSize: 12,
+      color: '#666'
+    }
+  },
+  yAxis: {
+    type: 'value',
+    name: 'Log10(Total Reads)',
+    nameLocation: 'middle',
+    nameGap: 45,
+    nameTextStyle: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: '#333'
+    },
+    min: 0,
+    splitLine: { 
+      show: true, 
+      lineStyle: { type: 'dashed', opacity: 0.3 } 
+    },
+    axisLabel: {
+      fontSize: 12,
+      color: '#666'
+    }
+  },
+  series: [{
+    type: 'scatter',
+    data: validData,
+    symbolSize: function(params) {
+      const data = params?.data
+      if (!data || data.length < 3) return 6
+      return data[2] === 'low-coverage' ? 4 : 8
+    },
+    itemStyle: {
+      color: function(params) {
+        if (!params || !params.data || !Array.isArray(params.data) || params.data.length < 3) {
+          return '#d0d0d0'
+        }
+        
+        const colors = {
+          'sample2-enriched': '#ee6666',
+          'sample1-enriched': '#5470c6',
+          'similar': '#91cc75',
+          'low-coverage': '#d0d0d0'
+        }
+        return colors[params.data[2]] || '#d0d0d0'
       },
-      { 
-        xAxis: 1,
-        label: { formatter: 'Log2FC = 1' }
+      opacity: 0.8,
+      borderWidth: 0.5,
+      borderColor: '#fff'
+    },
+    emphasis: {
+      itemStyle: {
+        shadowBlur: 10,
+        shadowColor: 'rgba(0, 0, 0, 0.3)',
+        borderWidth: 2,
+        borderColor: '#fff',
+        opacity: 1
       },
-      { 
-        xAxis: -1,
-        label: { formatter: 'Log2FC = -1' }
-      }
-    ]
-  }
-}]
+      scale: 1.2
+    }
+  }]
 }
 
 bamVolcanoChart.setOption(option)
@@ -1363,30 +1319,30 @@ statsPanel.innerHTML = `
     
     <div style="text-align: center;">
       <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #4fc3f7;">
-        ${stats.significant}
+        ${stats.sample2Enriched + stats.sample1Enriched}
       </div>
       <div style="font-size: 12px; opacity: 0.9;">
-        Significant (${((stats.significant/stats.total)*100).toFixed(1)}%)
+        Enriched (${(((stats.sample2Enriched + stats.sample1Enriched)/stats.total)*100).toFixed(1)}%)
       </div>
     </div>
     
     <div style="text-align: center;">
       <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #ffab91;">
-        ${stats.higherCoverage}
+        ${stats.sample2Enriched}
       </div>
-      <div style="font-size: 12px; opacity: 0.9;">Higher Coverage</div>
+      <div style="font-size: 12px; opacity: 0.9;">Sample2 Enriched</div>
     </div>
     
     <div style="text-align: center;">
       <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #81c784;">
-        ${stats.lowerCoverage}
+        ${stats.sample1Enriched}
       </div>
-      <div style="font-size: 12px; opacity: 0.9;">Lower Coverage</div>
+      <div style="font-size: 12px; opacity: 0.9;">Sample1 Enriched</div>
     </div>
   </div>
   
   <div style="margin-top: 12px; font-size: 12px; opacity: 0.85; text-align: center;">
-    💡 Threshold: P-value < ${bamVolcanoThreshold.value.pvalue}, |Log2FC| > 1
+    💡 Threshold: Density ratio > ${bamVolcanoThreshold.value.pvalue.toFixed(1)}x
   </div>
 `
 }
@@ -1654,7 +1610,7 @@ const option = {
     textStyle: { fontSize: 12 }
   },
   grid: {
-    left: '10%',
+    left: '15%',
     right: '10%',
     bottom: '25%',
     top: '25%'
@@ -1913,7 +1869,41 @@ upregulated: data.filter(d => d[2] === 'upregulated').length,
 downregulated: data.filter(d => d[2] === 'downregulated').length,
 other: data.filter(d => d[2] === 'significant').length
 }
+console.log('rMATS volcano data sample:', data.slice(0, 3))
+console.log('First data item structure:', data[0])
+console.log('Data item type check:')
+data.slice(0, 3).forEach((item, index) => {
+  console.log(`Item ${index}:`, item, 'isArray:', Array.isArray(item), 'length:', item?.length)
+})
+let validData = []
+if (data.length > 0 && typeof data[0] === 'object' && !Array.isArray(data[0])) {
+  // 真实数据是对象格式，需要转换
+  console.log('Converting object data to array format')
+  validData = data
+    .filter(item => item && typeof item === 'object')
+    .map(item => [
+      item.deltaPsi || 0,
+      item.negLog10Fdr || 0, 
+      item.category || 'non-significant',
+      item.eventName || 'Unknown'
+    ])
+} else {
+  // 原有的数组格式验证
+  validData = data.filter(item => Array.isArray(item) && item.length >= 4)
+}
 
+console.log('Converted data sample:', validData.slice(0, 3))
+console.log('Valid data length:', validData.length)
+
+if (validData.length === 0) {
+  console.warn('No valid rMATS data, using default')
+  validData = [[0, 2, 'non-significant', 'DefaultEvent']]
+}
+console.log('rMATS valid data length:', validData.length)
+
+if (validData.length === 0) {
+  validData.push([0, 2, 'non-significant', 'DefaultEvent'])
+}
 const option = {
 title: {
   text: 'Volcano Plot (ΔPSI vs -log₁₀FDR)',
@@ -2001,7 +1991,7 @@ tooltip: {
  }
 },
 grid: {
- left: '10%',
+ left: '15%',
  right: '10%',
  bottom: '25%',
  top: '25%'
@@ -2051,10 +2041,14 @@ yAxis: {
 },
 series: [{
  type: 'scatter',
- data: data,
- symbolSize: function(data) {
-   return data[2] === 'non-significant' ? 4 : 8
- },
+ data: validData,
+symbolSize: function(params) {
+  // 添加安全检查
+  if (!params || !params.data || !Array.isArray(params.data) || params.data.length < 3) {
+    return 6  // 默认大小
+  }
+  return params.data[2] === 'non-significant' ? 4 : 8
+},
  itemStyle: {
    color: function(params) {
      const colors = {
@@ -2258,42 +2252,41 @@ onMounted(async () => {
     showStatus('✅ Real BAM data loaded successfully!')
     
     // 🔥 新增：加载rMATS数据
-    try {
-      const rmatsResponse = await fetch('/rmats_analysis_result.json')
-      if (rmatsResponse.ok) {
-        const rmatsRealData = await rmatsResponse.json()
-        console.log('Loaded rMATS data:', rmatsRealData)
-        
-        // 根据你的rMATS分析器输出结构更新数据
-        rmatsData.value = {
-          totalEvents: rmatsRealData.summary?.total_events || rmatsRealData.totalEvents || 0,
-          significantEvents: rmatsRealData.summary?.significant_events || rmatsRealData.significantEvents || 0,
-          maxPsiIncrease: rmatsRealData.summary?.max_psi_increase || rmatsRealData.maxPsiIncrease || 0,
-          maxPsiDecrease: rmatsRealData.summary?.max_psi_decrease || rmatsRealData.maxPsiDecrease || 0,
-          group1Samples: rmatsRealData.summary?.group1_samples || rmatsRealData.group1Samples || 0,
-          group2Samples: rmatsRealData.summary?.group2_samples || rmatsRealData.group2Samples || 0,
-          eventCounts: rmatsRealData.event_types || rmatsRealData.eventCounts || {
-            SE: 0, A5SS: 0, A3SS: 0, MXE: 0, RI: 0
-          },
-          volcanoData: rmatsRealData.volcano_plot || [],
-          significanceData: rmatsRealData.significance_statistics || []
-        }
-        
-        console.log('Updated rmatsData:', rmatsData.value)
-        showStatus('✅ Real rMATS data loaded successfully!')
-        
-        // 如果当前在rMATS标签，重新初始化图表
-        if (activeTab.value === 'rmats') {
-          await nextTick()
-          initDonutChart()
-          initBarChart()
-          initVolcanoChart()
-        }
-        
-      } else {
-        throw new Error(`Failed to load rMATS data: ${rmatsResponse.status}`)
-      }
-    } catch (rmatsError) {
+try {
+  const rmatsResponse = await fetch('/rmats_analysis_result.json')
+  if (rmatsResponse.ok) {
+    const rmatsRealData = await rmatsResponse.json()
+    console.log('Loaded rMATS data:', rmatsRealData)
+    
+    // 访问正确的数据结构
+    const rmatsInfo = rmatsRealData.rmatsData || rmatsRealData
+    
+    rmatsData.value = {
+      totalEvents: rmatsInfo.totalEvents || 0,
+      significantEvents: rmatsInfo.significantEvents || 0,
+      maxPsiIncrease: rmatsInfo.maxPsiIncrease || 0,
+      maxPsiDecrease: rmatsInfo.maxPsiDecrease || 0,
+      group1Samples: rmatsInfo.group1Samples || 0,
+      group2Samples: rmatsInfo.group2Samples || 0,
+      eventCounts: rmatsInfo.eventCounts || {
+        SE: 0, A5SS: 0, A3SS: 0, MXE: 0, RI: 0
+      },
+      volcanoData: rmatsRealData.chartData?.volcanoPlot || [],
+      significanceData: rmatsRealData.chartData?.significanceStats || []
+    }
+    
+    console.log('Updated rmatsData:', rmatsData.value)
+    showStatus('✅ Real rMATS data loaded successfully!')
+    
+    // 如果当前在rMATS标签，重新初始化图表
+    if (activeTab.value === 'rmats') {
+      await nextTick()
+      initDonutChart()
+      initBarChart()
+      initVolcanoChart()
+    }
+  }
+} catch (rmatsError) {
       console.error('Failed to load rMATS data:', rmatsError)
       showStatus(`⚠️ Using default rMATS data: ${rmatsError.message}`)
       

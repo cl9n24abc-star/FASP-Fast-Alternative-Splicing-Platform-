@@ -177,9 +177,8 @@ def quick_analyze_rmats(input_path, output_path=None):
         result["rmatsData"]["maxPsiIncrease"] = round(max(all_psi_values), 3)
         result["rmatsData"]["maxPsiDecrease"] = round(min(all_psi_values), 3)
     
-    # 保存结果
-    output_file = os.path.join(output_path, "rmats_analysis_result.json")
-    os.makedirs(output_path, exist_ok=True)
+    output_file = "../../frontend/public/rmats_analysis_result.json"
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)

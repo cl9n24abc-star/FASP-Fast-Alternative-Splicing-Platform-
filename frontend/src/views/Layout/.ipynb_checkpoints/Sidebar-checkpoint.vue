@@ -19,10 +19,6 @@
         <span>User Guide</span>
       </el-menu-item>
       
-      <el-menu-item index="/contact">
-        <el-icon><Message /></el-icon>
-        <span>Contact</span>
-      </el-menu-item>
     </el-menu>
 
     <!-- Analysis Mode Menu -->
