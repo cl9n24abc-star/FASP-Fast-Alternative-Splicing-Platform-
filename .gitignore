@@ -1,4 +1,29 @@
-# Frontend
+# Node modules
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Dependencies
+*/node_modules/
+
+# Package locks (可选)
+package-lock.json
+
+# Environment files
+.env
+.env.local
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db# Frontend
 frontend/node_modules/
 frontend/dist/
 
